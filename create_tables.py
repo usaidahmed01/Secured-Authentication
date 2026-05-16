@@ -2,6 +2,7 @@ import asyncio
 
 from app.db.base import Base
 from app.db.session import engine
+from app.models import User  # noqa: F401
 
 
 async def create_tables():
