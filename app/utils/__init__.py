@@ -1,5 +1,6 @@
 from app.utils.password import hash_password, verify_password
 from app.utils.token import (
+    BEARER_TOKEN_TYPE,
     create_access_token,
     create_refresh_token,
     decode_access_token,
@@ -8,6 +9,7 @@ from app.utils.token import (
 )
 
 __all__ = [
+    "BEARER_TOKEN_TYPE",
     "create_access_token",
     "create_refresh_token",
     "decode_access_token",

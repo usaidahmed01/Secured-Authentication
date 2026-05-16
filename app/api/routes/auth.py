@@ -21,13 +21,13 @@ from app.services import (
     get_user_by_id,
 )
 from app.utils import (
+    BEARER_TOKEN_TYPE,
     create_access_token,
     create_refresh_token,
     decode_access_token,
     decode_refresh_token,
     get_token_remaining_seconds,
 )
-
 
 router = APIRouter(
     prefix="/auth",
@@ -84,7 +84,7 @@ async def login_user(
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
-        "token_type": "bearer",
+        "token_type": BEARER_TOKEN_TYPE,
     }
 
 
@@ -104,7 +104,7 @@ async def refresh_tokens(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from None
 
     user = await get_user_by_id(db, user_id)
 
@@ -127,7 +127,7 @@ async def refresh_tokens(
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
-        "token_type": "bearer",
+        "token_type": BEARER_TOKEN_TYPE,
     }
 
 
@@ -147,7 +147,7 @@ async def logout_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication token",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from None
 
     if not token_jti:
         raise HTTPException(

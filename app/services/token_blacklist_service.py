@@ -1,6 +1,5 @@
 from redis.asyncio import Redis
 
-
 BLACKLIST_PREFIX = "blacklist:access:"
 
 

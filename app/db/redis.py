@@ -4,7 +4,6 @@ from redis.asyncio import Redis
 
 from app.core.config import settings
 
-
 redis_client: Redis | None = None
 
 
@@ -24,7 +23,7 @@ async def close_redis() -> None:
         await redis_client.aclose()
 
 
-async def get_redis() -> AsyncGenerator[Redis, None]:
+async def get_redis() -> AsyncGenerator[Redis]:
     if not redis_client:
         raise RuntimeError("Redis client is not connected")
 

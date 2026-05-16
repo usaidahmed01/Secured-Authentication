@@ -9,7 +9,6 @@ from app.models import User
 from app.services import get_user_by_id, is_access_token_blacklisted
 from app.utils import decode_access_token
 
-
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/auth/login",
 )
@@ -29,7 +28,7 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication token",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from None
 
     if not token_jti:
         raise HTTPException(
