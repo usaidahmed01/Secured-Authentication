@@ -80,3 +80,18 @@ def decode_refresh_token(token: str) -> dict:
         raise ValueError("Invalid refresh token type")
 
     return payload
+
+
+def get_token_remaining_seconds(payload: dict) -> int:
+    expires_at = payload.get("exp")
+
+    if not expires_at:
+        return 0
+
+    current_timestamp = int(datetime.now(timezone.utc).timestamp())
+    remaining_seconds = int(expires_at) - current_timestamp
+
+    if remaining_seconds < 0:
+        return 0
+
+    return remaining_seconds

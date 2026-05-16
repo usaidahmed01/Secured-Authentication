@@ -1,11 +1,32 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies import oauth2_scheme
+from app.db.redis import get_redis
 from app.db.session import get_db
-from app.schemas import TokenExchangeResponse, UserCreate, UserRegistrationResponse
-from app.services import authenticate_user, create_user, get_user_by_email
-from app.utils import create_access_token, create_refresh_token
+from app.schemas import (
+    StandardActionResponse,
+    TokenExchangeResponse,
+    TokenRefreshRequest,
+    UserCreate,
+    UserRegistrationResponse,
+)
+from app.services import (
+    authenticate_user,
+    blacklist_access_token,
+    create_user,
+    get_user_by_email,
+    get_user_by_id,
+)
+from app.utils import (
+    create_access_token,
+    create_refresh_token,
+    decode_access_token,
+    decode_refresh_token,
+    get_token_remaining_seconds,
+)
 
 
 router = APIRouter(
@@ -64,4 +85,86 @@ async def login_user(
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
+    }
+
+
+@router.post(
+    "/refresh",
+    response_model=TokenExchangeResponse,
+)
+async def refresh_tokens(
+    token_data: TokenRefreshRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        payload = decode_refresh_token(token_data.refresh_token)
+        user_id = int(payload.get("sub"))
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user = await get_user_by_id(db, user_id)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Inactive user account",
+        )
+
+    access_token = create_access_token(user.id)
+    refresh_token = create_refresh_token(user.id)
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
+
+
+@router.post(
+    "/logout",
+    response_model=StandardActionResponse,
+)
+async def logout_user(
+    token: str = Depends(oauth2_scheme),
+    redis: Redis = Depends(get_redis),
+):
+    try:
+        payload = decode_access_token(token)
+        token_jti = payload.get("jti")
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not token_jti:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    remaining_seconds = get_token_remaining_seconds(payload)
+
+    if remaining_seconds > 0:
+        await blacklist_access_token(
+            redis=redis,
+            token_jti=token_jti,
+            expires_in_seconds=remaining_seconds,
+        )
+
+    return {
+        "detail": "Revocation complete",
     }
