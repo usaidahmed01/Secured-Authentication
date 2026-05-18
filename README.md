@@ -640,6 +640,6 @@ bandit -r app
 
 ## Author
 
-**Basit Ahmed**
+**Usaid Ahmed**
 
 Backend project for FastAPI OAuth2 authentication, Redis blacklist logout, PostgreSQL integration, and automated CI testing.
